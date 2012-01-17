@@ -1,0 +1,8 @@
+Table Monster
+=============
+
+Imagine you wanted to buid a table full of different fictional people, with varying distinctive features and traits. You might want to leverage other people to do that, but good luck coordinating all those people!
+
+What if you could do harness that creativity via hashtags on twitter?  That's the basic concept that I am working with. On the website right now is the first deom, but the concept will expand rapidly.
+
+
