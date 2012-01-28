@@ -7,22 +7,33 @@ use URI::Escape;
 use Getopt::Long;
 use Data::Dumper;
 
-my $search_base = "http://search.twitter.com/search.json?q=" ;
-my $search_params = "&rpp=100&result_type=mixed";
-my ($hashtag, $file, $suppress);
+my ($hashtag, $file, $suppress, $dump, $init);
 
 my $parameters = GetOptions("hash=s" => \$hashtag,
 							"file=s" => \$file,
 							"suppress" => \$suppress,
+							"dump" => \$dump,
+							"init" => \$init
 							);
 # parameter sanity checking
 die "need --hashtag parameter" unless $hashtag;
 
+my $search_base = "http://search.twitter.com/search.json?q=" ;
+my $search_results = "&rpp=100&result_type=mixed";
+my $search_params = ($init) ? $search_results : get_since();
 my $search_query = uri_escape($hashtag);
 my $search_URI = $search_base . $search_query . $search_params;
 
+print $search_URI;
+#exit;
+
 my $data = fetch_json_page($search_URI);
 
+#Dump the data structure and leave if we pass --dump
+if ($dump){
+	print Dumper($data);
+	exit;
+}
 foreach my $result (@{$data->{'results'}}){
 	my $rtext = $result->{'text'};
 	next if $rtext =~ /RT/;
@@ -42,10 +53,30 @@ foreach my $result (@{$data->{'results'}}){
 	}
 }
 
+since($data);
+
+
+## Subroutines
 
 sub since {
-	#calculate when weshould make the 
+	my $write_since_data = shift;
+	my @idlist = ();
+	my @sorted_ids = ();
+	my $since_file = ".since_" . $hashtag;
+	foreach my $id (@{$write_since_data->{'results'}}){
+		push @idlist, $id->{'id'};
+	} 
+	#testing code
+	# print join "\n", @idlist;
+	# exit;
+	##
+	if (@idlist){
+	@sorted_ids = sort { $b <=> $a } @idlist; #leave the highest id at the beginning of the array.
+	open my $SINCE_W, ">$since_file" or die "Unable to write to $since_file : $! \n";
+	print $SINCE_W $sorted_ids[0] . "\n";
+	}
 }
+
 sub fetch_json_page{
 	my $json_url = shift;
 	my $browser = WWW::Mechanize->new();
@@ -64,7 +95,17 @@ sub get_tags{
 	@taglist = ($text_with_tags =~ /(#\w*)/igs);
 	return @taglist;
 }
+sub get_since{
+	my $since_file = ".since_" . $hashtag;
+	if (-e $since_file){
+		open my $SINCE, "<$since_file" || die "can't open the .since file : $!\n";
+		my $id = <$SINCE>;
+		chomp($id);
+		my $since_str = $search_results . "&since_id=" . $id ;
+		return $since_str;
+	}
 
+}
 sub save_to_file {
 	my $text = shift;
 	my $user = shift;
